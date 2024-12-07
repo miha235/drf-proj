@@ -9,7 +9,7 @@ def home(request):
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("", home, name="home"),  # Добавьте этот путь для главной страницы
-    path("api/", include("lms.urls")),  # Ваши другие API маршруты
-    path("api/users/", include("users.urls")),  # Пример маршрута для пользователей
+    path("", home, name="home"),
+    path("api/", include("lms.urls")),
+    path("api/users/", include("users.urls")),
 ]
