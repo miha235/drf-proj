@@ -1,13 +1,17 @@
 from rest_framework import serializers
 from .models import Course, Lesson
 
-class CourseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Course
-        fields = ['id', 'title', 'description']
-
 
 class LessonSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lesson
-        fields = ['id', 'title', 'course', 'content']
+        fields = '__all__'  # Включает все поля модели Lesson
+
+
+class CourseSerializer(serializers.ModelSerializer):
+    # Добавляем связанные уроки (Lesson) в сериализатор курса
+    lessons = LessonSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Course
+        fields = '__all__'  # Включает все поля модели Course
