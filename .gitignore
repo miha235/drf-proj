@@ -1,0 +1,21 @@
+# .gitignore
+
+# Python files
+*.pyc
+*.pyo
+__pycache__/
+
+# Virtual environment
+venv/
+env/
+
+# IDE-specific files
+.idea/
+
+.env
+
+# Django files
+*.log
+db.sqlite3
+staticfiles/
+media/
