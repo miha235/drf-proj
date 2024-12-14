@@ -8,7 +8,9 @@ def home(request):
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("", home, name="home"),
-    path("api/", include("lms.urls")),
-    path("api/users/", include("users.urls")),
+    path("", home, name="home"),  # Главная страница
+    path("api/", include("lms.urls")),  # Маршруты для приложения lms
+    path("api/users/", include("users.urls")),  # Маршруты для приложения users
 ]
+
+
