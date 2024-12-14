@@ -30,8 +30,8 @@ class User(AbstractUser):
         help_text="Загрузите аватар",
     )
 
-    USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = []
+    USERNAME_FIELD = "email"  # Указываем, что для входа будет использоваться email
+    REQUIRED_FIELDS = []  # Не указываем дополнительные обязательные поля
 
     class Meta:
         verbose_name = "Пользователь"

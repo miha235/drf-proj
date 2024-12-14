@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "users",
     "lms",
+    'rest_framework_simplejwt',
 ]
 
 MIDDLEWARE = [
@@ -102,5 +103,11 @@ REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
     ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
 }
+
+
+
 
