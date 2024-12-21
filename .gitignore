@@ -4,6 +4,7 @@
 *.pyc
 *.pyo
 __pycache__/
+*.py[cod]
 
 # Virtual environment
 venv/
