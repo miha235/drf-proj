@@ -1,4 +1,8 @@
 from django.db import models
+from django.contrib.auth import get_user_model  # Используем для работы с моделью пользователя
+
+User = 'users.User'
+  # Получаем текущую модель пользователя
 
 
 class Course(models.Model):
@@ -22,11 +26,28 @@ class Course(models.Model):
         return self.title
 
 
+class Subscription(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+    )
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'course')  # Уникальная подписка: один пользователь на один курс
+        verbose_name = "Подписка"
+        verbose_name_plural = "Подписки"
+
+
 class Lesson(models.Model):
     title = models.CharField(
         max_length=200,
         verbose_name="Название урока",
-        help_text="Укажите назыание урока",
+        help_text="Укажите название урока",
     )
     description = models.TextField(
         verbose_name="Описание", help_text="Укажите описание урока"
