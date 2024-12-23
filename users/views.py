@@ -1,18 +1,18 @@
 # users/views.py
-from rest_framework.views import APIView
+from django.contrib.auth import get_user_model
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import generics, status
 from rest_framework.response import Response
-from rest_framework import status,generics
+from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
+
 from users.models import Payment
 from users.serializers import PaymentSerializer
-from django_filters.rest_framework import DjangoFilterBackend
+
 from .filters import PaymentFilter
-from django.contrib.auth import get_user_model
 from .serializers import UserSerializer
 
-
 User = get_user_model()
-
 
 
 class UserListView(APIView):
@@ -30,7 +30,6 @@ class UserListView(APIView):
         return Response({"users": users}, status=status.HTTP_200_OK)
 
 
-
 class PaymentViewSet(ModelViewSet):
     queryset = Payment.objects.all()
     serializer_class = PaymentSerializer
@@ -44,8 +43,10 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
-    def perform_create(self,serializer):
+    def perform_create(self, serializer):
         # Хэширование пароля при создании
-        user = serializer.save ()
-        user.set_password ( self.request.data['password'] )  # Хэшируем пароль перед сохранением
-        user.save ()
+        user = serializer.save()
+        user.set_password(
+            self.request.data["password"]
+        )  # Хэшируем пароль перед сохранением
+        user.save()

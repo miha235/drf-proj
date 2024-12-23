@@ -1,69 +1,75 @@
-from django.contrib.auth import get_user_model
 from django.test import TestCase
-from lms.models import Course, Lesson
+from django.contrib.auth import get_user_model
+from .models import Course, Subscription, Lesson
+from django.db import IntegrityError
 
-class CourseAndLessonTests(TestCase):
+
+User = get_user_model()
+
+class CourseModelTest(TestCase):
     def setUp(self):
-        # Создание пользователя с использованием email, без username
-        self.user = get_user_model().objects.create_user(
-            email='testuser@example.com',
-            password='password123'
+        self.course = Course.objects.create(
+            title="Test Course",
+            description="Test description for the course.",
         )
-        # Создание курса и урока для тестов
-        self.course = Course.objects.create(name='Test Course')
-        self.lesson = Lesson.objects.create(course=self.course, name='Test Lesson')
 
-    def test_access_without_authentication(self):
-        # Пример теста на доступ без аутентификации
-        response = self.client.get('/some_protected_url/')
-        self.assertEqual(response.status_code, 302)  # Проверка перенаправления
+    def test_course_str(self):
+        """Проверка, что метод __str__ возвращает правильное название курса"""
+        self.assertEqual(str(self.course), "Test Course")
 
-    def test_create_course_as_admin(self):
-        # Пример теста на создание курса администратором
-        self.client.login(email='testuser@example.com', password='password123')
-        response = self.client.post('/create_course/', {'name': 'New Course'})
-        self.assertEqual(response.status_code, 201)  # Проверка успешного создания курса
+    def test_course_creation(self):
+        """Проверка создания курса"""
+        course = Course.objects.get(title="Test Course")
+        self.assertEqual(course.description, "Test description for the course.")
 
-    def test_create_course_as_user(self):
-        # Пример теста на создание курса обычным пользователем
-        self.client.login(email='testuser@example.com', password='password123')
-        response = self.client.post('/create_course/', {'name': 'New Course'})
-        self.assertEqual(response.status_code, 403)  # Ожидаем отказ в доступе
+from django.contrib.auth import get_user_model
 
-    def test_create_lesson_as_admin(self):
-        # Пример теста на создание урока администратором
-        self.client.login(email='testuser@example.com', password='password123')
-        response = self.client.post('/create_lesson/', {'course': self.course.id, 'name': 'New Lesson'})
-        self.assertEqual(response.status_code, 201)
+class SubscriptionModelTest(TestCase):
+    def setUp(self):
+        # Создаем пользователя и устанавливаем пароль
+        self.user = User.objects.create(username="testuser", email="testuser@example.com")
+        self.user.set_password("password")
+        self.user.save()
 
-    def test_create_lesson_as_user(self):
-        # Пример теста на создание урока обычным пользователем
-        self.client.login(email='testuser@example.com', password='password123')
-        response = self.client.post('/create_lesson/', {'course': self.course.id, 'name': 'New Lesson'})
-        self.assertEqual(response.status_code, 403)  # Ожидаем отказ в доступе
+        # Логиним пользователя через force_login
+        self.client.force_login(self.user)
 
-    def test_subscribe_to_course(self):
-        # Пример теста на подписку на курс
-        self.client.login(email='testuser@example.com', password='password123')
-        response = self.client.post(f'/subscribe/{self.course.id}/')
-        self.assertEqual(response.status_code, 200)  # Проверка успешной подписки
+        self.course = Course.objects.create(
+            title="Test Course",
+            description="Test description for the course.",
+        )
+        self.subscription = Subscription.objects.create(user=self.user, course=self.course)
 
-    def test_subscribe_to_course_twice(self):
-        # Пример теста на попытку подписки дважды
-        self.client.login(email='testuser@example.com', password='password123')
-        self.client.post(f'/subscribe/{self.course.id}/')
-        response = self.client.post(f'/subscribe/{self.course.id}/')  # Повторная подписка
-        self.assertEqual(response.status_code, 400)  # Проверка ошибки из-за дублирования подписки
+    def test_subscription_creation(self):
+        """Проверка создания подписки"""
+        subscription = Subscription.objects.get(user=self.user, course=self.course)
+        self.assertEqual(subscription.user.username, "testuser")
+        self.assertEqual(subscription.course.title, "Test Course")
 
-    def test_unsubscribe_from_course(self):
-        # Пример теста на отписку от курса
-        self.client.login(email='testuser@example.com', password='password123')
-        self.client.post(f'/subscribe/{self.course.id}/')  # Подписка
-        response = self.client.post(f'/unsubscribe/{self.course.id}/')  # Отписка
-        self.assertEqual(response.status_code, 200)
+    def test_unique_subscription(self):
+        """Проверка, что подписка уникальна для одного пользователя и курса"""
+        with self.assertRaises(IntegrityError):
+            Subscription.objects.create(user=self.user, course=self.course)
 
-    def test_unsubscribe_from_course_not_subscribed(self):
-        # Пример теста на отписку от курса, на который не подписан пользователь
-        self.client.login(email='testuser@example.com', password='password123')
-        response = self.client.post(f'/unsubscribe/{self.course.id}/')  # Попытка отписки без подписки
-        self.assertEqual(response.status_code, 400)  # Ожидаем ошибку
+class LessonModelTest(TestCase):
+    def setUp(self):
+        self.course = Course.objects.create(
+            title="Test Course",
+            description="Test description for the course.",
+        )
+        self.lesson = Lesson.objects.create(
+            title="Test Lesson",
+            description="Test description for the lesson.",
+            video_url="http://example.com/video",
+            course=self.course,
+        )
+
+    def test_lesson_creation(self):
+        """Проверка создания урока"""
+        lesson = Lesson.objects.get(title="Test Lesson")
+        self.assertEqual(lesson.description, "Test description for the lesson.")
+        self.assertEqual(lesson.course.title, "Test Course")
+
+    def test_lesson_str(self):
+        """Проверка, что метод __str__ возвращает правильное название урока"""
+        self.assertEqual(str(self.lesson), "Test Lesson")

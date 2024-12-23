@@ -1,8 +1,10 @@
+from django.contrib.auth import (
+    get_user_model,
+)  # Используем для работы с моделью пользователя
 from django.db import models
-from django.contrib.auth import get_user_model  # Используем для работы с моделью пользователя
 
-User = 'users.User'
-  # Получаем текущую модель пользователя
+User = "users.User"
+# Получаем текущую модель пользователя
 
 
 class Course(models.Model):
@@ -38,7 +40,10 @@ class Subscription(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('user', 'course')  # Уникальная подписка: один пользователь на один курс
+        unique_together = (
+            "user",
+            "course",
+        )  # Уникальная подписка: один пользователь на один курс
         verbose_name = "Подписка"
         verbose_name_plural = "Подписки"
 

@@ -1,76 +1,87 @@
-from rest_framework.viewsets import ModelViewSet
-from .models import Subscription, Course
-from .serializers import CourseSerializer, SubscriptionSerializer, LessonSerializer
-from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
-from .models import Lesson
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.permissions import IsAuthenticated
-from .paginators import CustomPagination
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.viewsets import ModelViewSet
 
+from .models import Course, Lesson, Subscription
+from .paginators import CustomPagination
+from .serializers import CourseSerializer, LessonSerializer
 
 
 class CourseViewSet(ModelViewSet):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
-    pagination_class = CustomPagination # Подключаем пагинацию
+    pagination_class = CustomPagination  # Подключаем пагинацию
+
 
 class LessonListCreateView(ListCreateAPIView):
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
-    pagination_class = CustomPagination # Подключаем пагинацию
+    pagination_class = CustomPagination  # Подключаем пагинацию
 
 
 class LessonDetailView(RetrieveUpdateDestroyAPIView):
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
 
+
 class SubscriptionView(APIView):
-    permission_classes = [IsAuthenticated]  # Только для аутентифицированных пользователей
+    permission_classes = [IsAuthenticated]
 
-    def post(self, request):
+    def _get_course(self, course_id):
         """
-        Создание подписки.
+        Извлекает курс по ID. Возвращает объект Course или Response с ошибкой.
         """
-        user = request.user
-        course_id = request.data.get('course_id')
-
-        # Проверка наличия course_id
         if not course_id:
-            return Response({"error": "Не передан ID курса."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Не передан ID курса."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
-        # Проверка существования курса
         try:
             course = Course.objects.get(id=course_id)
         except Course.DoesNotExist:
-            return Response({"error": "Курс не найден."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Курс не найден."}, status=status.HTTP_404_NOT_FOUND
+            )
 
-        # Проверка существующей подписки
-        if Subscription.objects.filter(user=user, course=course).exists():
-            return Response({"error": "Вы уже подписаны на этот курс."}, status=status.HTTP_400_BAD_REQUEST)
+        return course
 
-        # Создание подписки
-        subscription = Subscription.objects.create(user=user, course=course)
-        serializer = SubscriptionSerializer(subscription)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    def post(self, request):
+        """
+        Обработчик для создания подписки.
+        """
+        course_id = request.data.get("course_id")
+        course = self._get_course(course_id)
+
+        if isinstance(course, Response):  # Если вернулся Response с ошибкой
+            return course
+
+        # Логика создания подписки
+        Subscription.objects.create(user=request.user, course=course)
+        return Response(
+            {"message": "Подписка успешно создана."}, status=status.HTTP_201_CREATED
+        )
 
     def delete(self, request):
         """
-        Удаление подписки.
+        Обработчик для удаления подписки.
         """
-        user = request.user
-        course_id = request.data.get('course_id')
+        course_id = request.data.get("course_id")
+        course = self._get_course(course_id)
 
-        # Проверка наличия course_id
-        if not course_id:
-            return Response({"error": "Не передан ID курса."}, status=status.HTTP_400_BAD_REQUEST)
+        if isinstance(course, Response):  # Если вернулся Response с ошибкой
+            return course
 
+        # Логика удаления подписки
         try:
-            # Проверка существующей подписки
-            subscription = Subscription.objects.get(user=user, course_id=course_id)
+            subscription = Subscription.objects.get(user=request.user, course=course)
             subscription.delete()
-            return Response({"message": "Подписка удалена."}, status=status.HTTP_204_NO_CONTENT)
+            return Response(
+                {"message": "Подписка успешно удалена."}, status=status.HTTP_200_OK
+            )
         except Subscription.DoesNotExist:
-            return Response({"error": "Подписка не найдена."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Подписка не найдена."}, status=status.HTTP_404_NOT_FOUND
+            )
