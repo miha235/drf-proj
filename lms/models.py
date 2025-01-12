@@ -3,7 +3,7 @@ from django.contrib.auth import (
 )  # Используем для работы с моделью пользователя
 from django.db import models
 
-User = "users.User"
+User = get_user_model()
 # Получаем текущую модель пользователя
 
 
@@ -23,6 +23,37 @@ class Course(models.Model):
     description = models.TextField(
         verbose_name="Описание", help_text="Укажите описание курса"
     )
+    owner = models.ForeignKey ( User,on_delete = models.CASCADE,related_name = 'courses' )
+
+    objects = models.Manager ()
+    def __str__(self):
+        return self.title
+
+
+
+
+class Lesson(models.Model):
+    title = models.CharField(
+        max_length=200,
+        verbose_name="Название урока",
+        help_text="Укажите название урока",
+    )
+    description = models.TextField(
+        verbose_name="Описание", help_text="Укажите описание урока"
+    )
+    preview = models.ImageField(
+        upload_to="lesson_previews/",
+        blank=True,
+        null=True,
+        verbose_name="Картинка",
+        help_text="Загрузите картинку",
+    )
+    video_url = models.URLField()
+    course = models.ForeignKey(Course, related_name="lessons", on_delete=models.CASCADE)
+    owner = models.ForeignKey ( User,on_delete = models.CASCADE,related_name = 'lessons' )
+
+    objects = models.Manager ()
+
 
     def __str__(self):
         return self.title
@@ -47,25 +78,3 @@ class Subscription(models.Model):
         verbose_name = "Подписка"
         verbose_name_plural = "Подписки"
 
-
-class Lesson(models.Model):
-    title = models.CharField(
-        max_length=200,
-        verbose_name="Название урока",
-        help_text="Укажите название урока",
-    )
-    description = models.TextField(
-        verbose_name="Описание", help_text="Укажите описание урока"
-    )
-    preview = models.ImageField(
-        upload_to="lesson_previews/",
-        blank=True,
-        null=True,
-        verbose_name="Картинка",
-        help_text="Загрузите картинку",
-    )
-    video_url = models.URLField()
-    course = models.ForeignKey(Course, related_name="lessons", on_delete=models.CASCADE)
-
-    def __str__(self):
-        return self.title

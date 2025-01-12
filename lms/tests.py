@@ -1,75 +1,108 @@
 from django.test import TestCase
+from rest_framework.test import APITestCase
 from django.contrib.auth import get_user_model
+from rest_framework import status
+from django.urls import reverse
 from .models import Course, Subscription, Lesson
 from django.db import IntegrityError
 
 
 User = get_user_model()
 
-class CourseModelTest(TestCase):
+class LessonCRUDTestCase(APITestCase):
     def setUp(self):
-        self.course = Course.objects.create(
-            title="Test Course",
-            description="Test description for the course.",
-        )
+        self.user = User.objects.create_user(email='testuser@example.com', password='12345')
+        self.moderator = User.objects.create_user(email='moderator@example.com', password='12345')
+        self.moderator.groups.create(name='moderators')
+        self.course = Course.objects.create(title='Test Course', description='Test Description', owner=self.user)
+        self.lesson = Lesson.objects.create(title='Test Lesson', description='Test Description',
+                                            course=self.course, owner=self.user, video_link='https://youtube.com/watch?v=dQw4w9WgXcQ')
 
-    def test_course_str(self):
-        """Проверка, что метод __str__ возвращает правильное название курса"""
-        self.assertEqual(str(self.course), "Test Course")
+    def test_create_lesson(self):
+        self.client.force_authenticate(user=self.user)
+        url = reverse('lessons-list')
+        data = {
+            'title': 'New Lesson',
+            'description': 'New Description',
+            'course': self.course.id,
+            'video_link': 'https://youtube.com/watch?v=dQw4w9WgXcQ'
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-    def test_course_creation(self):
-        """Проверка создания курса"""
-        course = Course.objects.get(title="Test Course")
-        self.assertEqual(course.description, "Test description for the course.")
+    def test_retrieve_lesson(self):
+        url = reverse('lessons-detail', args=[self.lesson.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-from django.contrib.auth import get_user_model
+    def test_update_lesson(self):
+        self.client.force_authenticate(user=self.user)
+        url = reverse('lessons-detail', args=[self.lesson.id])
+        data = {'title': 'Updated Lesson'}
+        response = self.client.patch(url, data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Lesson.objects.get(id=self.lesson.id).title, 'Updated Lesson')
 
-class SubscriptionModelTest(TestCase):
+    def test_delete_lesson(self):
+        self.client.force_authenticate(user=self.user)
+        url = reverse('lessons-detail', args=[self.lesson.id])
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+
+class SubscriptionTestCase(APITestCase):
     def setUp(self):
-        # Создаем пользователя и устанавливаем пароль
-        self.user = User.objects.create(username="testuser", email="testuser@example.com")
-        self.user.set_password("password")
-        self.user.save()
+        self.user = User.objects.create_user(email='testuser@example.com', password='12345')
+        self.course = Course.objects.create(title='Test Course', description='Test Description', owner=self.user)
 
-        # Логиним пользователя через force_login
-        self.client.force_login(self.user)
+    def test_subscribe_to_course(self):
+        self.client.force_authenticate(user=self.user)
+        url = reverse('subscribe')
+        data = {'course_id': self.course.id}
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(Subscription.objects.filter(user=self.user, course=self.course).exists())
 
-        self.course = Course.objects.create(
-            title="Test Course",
-            description="Test description for the course.",
-        )
-        self.subscription = Subscription.objects.create(user=self.user, course=self.course)
+    def test_unsubscribe_from_course(self):
+        Subscription.objects.create(user=self.user, course=self.course)
+        self.client.force_authenticate(user=self.user)
+        url = reverse('subscribe')
+        data = {'course_id': self.course.id}
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(Subscription.objects.filter(user=self.user, course=self.course).exists())
 
-    def test_subscription_creation(self):
-        """Проверка создания подписки"""
-        subscription = Subscription.objects.get(user=self.user, course=self.course)
-        self.assertEqual(subscription.user.username, "testuser")
-        self.assertEqual(subscription.course.title, "Test Course")
 
-    def test_unique_subscription(self):
-        """Проверка, что подписка уникальна для одного пользователя и курса"""
-        with self.assertRaises(IntegrityError):
-            Subscription.objects.create(user=self.user, course=self.course)
-
-class LessonModelTest(TestCase):
+class CourseCRUDTestCase(APITestCase):
     def setUp(self):
-        self.course = Course.objects.create(
-            title="Test Course",
-            description="Test description for the course.",
-        )
-        self.lesson = Lesson.objects.create(
-            title="Test Lesson",
-            description="Test description for the lesson.",
-            video_url="http://example.com/video",
-            course=self.course,
-        )
+        self.user = User.objects.create_user(email='testuser@example.com', password='12345')
+        self.course = Course.objects.create(title='Test Course', description='Test Description', owner=self.user)
 
-    def test_lesson_creation(self):
-        """Проверка создания урока"""
-        lesson = Lesson.objects.get(title="Test Lesson")
-        self.assertEqual(lesson.description, "Test description for the lesson.")
-        self.assertEqual(lesson.course.title, "Test Course")
+    def test_create_course(self):
+        self.client.force_authenticate(user=self.user)
+        url = reverse('course-list')
+        data = {
+            'title': 'New Course',
+            'description': 'New Description'
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-    def test_lesson_str(self):
-        """Проверка, что метод __str__ возвращает правильное название урока"""
-        self.assertEqual(str(self.lesson), "Test Lesson")
+    def test_retrieve_course(self):
+        url = reverse('course-detail', args=[self.course.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_update_course(self):
+        self.client.force_authenticate(user=self.user)
+        url = reverse('course-detail', args=[self.course.id])
+        data = {'title': 'Updated Course'}
+        response = self.client.patch(url, data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Course.objects.get(id=self.course.id).title, 'Updated Course')
+
+    def test_delete_course(self):
+        self.client.force_authenticate(user=self.user)
+        url = reverse('course-detail', args=[self.course.id])
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)

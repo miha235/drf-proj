@@ -10,6 +10,7 @@ from .views import (
 
 router = DefaultRouter()
 router.register(r"courses", CourseViewSet)
+router.register(r'lessons', LessonViewSet, basename='lessons')
 
 urlpatterns = [
     path("", include(router.urls)),
@@ -17,3 +18,4 @@ urlpatterns = [
     path("lessons/<int:pk>/", LessonDetailView.as_view(), name="lesson-detail"),
     path("subscriptions/", SubscriptionView.as_view(), name="subscriptions"),
 ]
+
