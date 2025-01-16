@@ -9,6 +9,7 @@ class Course(models.Model):
     preview = models.ImageField(upload_to='course_previews', null=True, blank=True)
     description = models.TextField()
     owner = models.ForeignKey(User, on_delete=models.CASCADE, default = 1, related_name='courses')
+
     objects = models.Manager()
 
 
