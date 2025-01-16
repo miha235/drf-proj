@@ -1,0 +1,36 @@
+
+[
+  {
+    "model": "users.payment",
+    "pk": 1,
+    "fields": {
+      "user": 1,
+      "payment_date": "2023-07-01T10:00:00Z",
+      "course": 1,
+      "amount": 1000.00,
+      "payment_method": "card"
+    }
+  },
+  {
+    "model": "users.payment",
+    "pk": 2,
+    "fields": {
+      "user": 2,
+      "payment_date": "2023-07-02T11:30:00Z",
+      "course": 2,
+      "amount": 1500.00,
+      "payment_method": "transfer"
+    }
+  },
+  {
+    "model": "users.payment",
+    "pk": 3,
+    "fields": {
+      "user": 3,
+      "payment_date": "2023-07-03T09:15:00Z",
+      "course": 1,
+      "amount": 1000.00,
+      "payment_method": "cash"
+    }
+  }
+]
