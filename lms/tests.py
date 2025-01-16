@@ -3,11 +3,10 @@ from rest_framework.test import APITestCase
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from django.urls import reverse
-from .models import Course, Subscription, Lesson
-from django.db import IntegrityError
-
+from .models import Course, Lesson, Subscription
 
 User = get_user_model()
+
 
 class LessonCRUDTestCase(APITestCase):
     def setUp(self):

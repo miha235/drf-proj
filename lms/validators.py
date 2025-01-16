@@ -1,12 +1,15 @@
-import re
+from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
+from urllib.parse import urlparse
 
-from rest_framework.exceptions import ValidationError
 
+def validate_youtube_url(value):
+    url_validator = URLValidator()
+    try:
+        url_validator(value)
+    except ValidationError:
+        raise ValidationError('Введите корректный URL.')
 
-def validate_link(value):
-    """
-    Проверяет, что ссылка указывает только на youtube.com.
-    """
-    pattern = r"^(https?://)?(www\.)?(youtube\.com|youtu\.be)/.*$"
-    if not re.match(pattern, value):
-        raise ValidationError("Разрешены только ссылки на youtube.com.")
+    domain = urlparse(value).netloc
+    if domain != 'youtube.com' and domain != 'www.youtube.com':
+        raise ValidationError('Разрешены только ссылки на youtube.com')

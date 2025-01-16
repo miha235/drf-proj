@@ -1,52 +1,72 @@
-# users/views.py
-from django.contrib.auth import get_user_model
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import generics, status
+from rest_framework import generics, permissions, serializers
 from rest_framework.response import Response
-from rest_framework.views import APIView
-from rest_framework.viewsets import ModelViewSet
-
-from users.models import Payment
-from users.serializers import PaymentSerializer
-
-from .filters import PaymentFilter
-from .serializers import UserSerializer
-
-User = get_user_model()
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .models import User, Payment
 
 
-class UserListView(APIView):
-    def post(self, request):
-        # Логика для создания пользователя
-        return Response(
-            {"message": "User created successfully"}, status=status.HTTP_201_CREATED
-        )
-
-    def get(self, request):
-        # Логика для получения списка пользователей
-        users = (
-            []
-        )  # Это пример. В реальном приложении вы получите пользователей из базы данных
-        return Response({"users": users}, status=status.HTTP_200_OK)
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'first_name', 'phone', 'city', 'avatar']
 
 
-class PaymentViewSet(ModelViewSet):
+class UserDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'first_name', 'last_name', 'phone', 'city', 'avatar']
+        extra_kwargs = {'password': {'write_only': True}}
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        if password:
+            instance.set_password(password)
+        return super().update(instance, validated_data)
+
+
+class UserCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['email', 'password', 'first_name', 'last_name', 'phone', 'city', 'avatar']
+        extra_kwargs = {'password': {'write_only': True}}
+
+    def create(self, validated_data):
+        user = User.objects.create_user(**validated_data)
+        return user
+
+
+class PaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = '__all__'
+
+
+class UserCreateView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserCreateSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class UserProfileView(generics.RetrieveUpdateAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserDetailSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    lookup_field = 'id'
+
+    def get_serializer_class(self):
+        if self.request.user.id == self.kwargs['id']:
+            return UserDetailSerializer
+        return UserSerializer
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+
+class PaymentListView(generics.ListAPIView):
     queryset = Payment.objects.all()
     serializer_class = PaymentSerializer
-    filter_backends = [DjangoFilterBackend]
-    filterset_class = PaymentFilter
-    ordering_fields = ["date"]
 
 
-# Представление для регистрации
-class RegisterView(generics.CreateAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-
-    def perform_create(self, serializer):
-        # Хэширование пароля при создании
-        user = serializer.save()
-        user.set_password(
-            self.request.data["password"]
-        )  # Хэшируем пароль перед сохранением
-        user.save()
+class CustomTokenObtainPairView(TokenObtainPairView):
+    permission_classes = [permissions.AllowAny]

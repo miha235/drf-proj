@@ -1,87 +1,63 @@
-from rest_framework import status
-from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
+from rest_framework import viewsets, permissions, status
 from rest_framework.views import APIView
-from rest_framework.viewsets import ModelViewSet
-
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
 from .models import Course, Lesson, Subscription
-from .paginators import CustomPagination
 from .serializers import CourseSerializer, LessonSerializer
+from .permissions import IsModerator, IsOwner, ReadOnlyForAll
+from .paginators import MaterialsPaginator
 
 
-class CourseViewSet(ModelViewSet):
+class CourseViewSet(viewsets.ModelViewSet):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
-    pagination_class = CustomPagination  # Подключаем пагинацию
+    pagination_class = MaterialsPaginator
+
+    def get_permissions(self):
+        if self.action in ['create']:
+            permission_classes = [permissions.IsAuthenticated & ~IsModerator]
+        elif self.action in ['update', 'partial_update', 'destroy']:
+            permission_classes = [IsOwner | IsModerator]
+        else:
+            permission_classes = [ReadOnlyForAll | IsOwner | IsModerator]
+        return [permission() for permission in permission_classes]
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
 
 
-class LessonListCreateView(ListCreateAPIView):
+class LessonViewSet(viewsets.ModelViewSet):
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
-    pagination_class = CustomPagination  # Подключаем пагинацию
+    pagination_class = MaterialsPaginator
 
+    def get_permissions(self):
+        if self.action in ['create']:
+            permission_classes = [permissions.IsAuthenticated & ~IsModerator]
+        elif self.action in ['update', 'partial_update', 'destroy']:
+            permission_classes = [IsOwner | IsModerator]
+        else:
+            permission_classes = [ReadOnlyForAll | IsOwner | IsModerator]
+        return [permission() for permission in permission_classes]
 
-class LessonDetailView(RetrieveUpdateDestroyAPIView):
-    queryset = Lesson.objects.all()
-    serializer_class = LessonSerializer
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
 
 
 class SubscriptionView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
-    def _get_course(self, course_id):
-        """
-        Извлекает курс по ID. Возвращает объект Course или Response с ошибкой.
-        """
-        if not course_id:
-            return Response(
-                {"error": "Не передан ID курса."}, status=status.HTTP_400_BAD_REQUEST
-            )
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        course_id = request.data.get('course_id')
+        course = get_object_or_404(Course, id=course_id)
 
-        try:
-            course = Course.objects.get(id=course_id)
-        except Course.DoesNotExist:
-            return Response(
-                {"error": "Курс не найден."}, status=status.HTTP_404_NOT_FOUND
-            )
+        subscription, created = Subscription.objects.get_or_create(user=user, course=course)
 
-        return course
-
-    def post(self, request):
-        """
-        Обработчик для создания подписки.
-        """
-        course_id = request.data.get("course_id")
-        course = self._get_course(course_id)
-
-        if isinstance(course, Response):  # Если вернулся Response с ошибкой
-            return course
-
-        # Логика создания подписки
-        Subscription.objects.create(user=request.user, course=course)
-        return Response(
-            {"message": "Подписка успешно создана."}, status=status.HTTP_201_CREATED
-        )
-
-    def delete(self, request):
-        """
-        Обработчик для удаления подписки.
-        """
-        course_id = request.data.get("course_id")
-        course = self._get_course(course_id)
-
-        if isinstance(course, Response):  # Если вернулся Response с ошибкой
-            return course
-
-        # Логика удаления подписки
-        try:
-            subscription = Subscription.objects.get(user=request.user, course=course)
+        if created:
+            message = 'Подписка добавлена'
+        else:
             subscription.delete()
-            return Response(
-                {"message": "Подписка успешно удалена."}, status=status.HTTP_200_OK
-            )
-        except Subscription.DoesNotExist:
-            return Response(
-                {"error": "Подписка не найдена."}, status=status.HTTP_404_NOT_FOUND
-            )
+            message = 'Подписка удалена'
+
+        return Response({"message": message}, status=status.HTTP_200_OK)

@@ -1,80 +1,35 @@
-from django.contrib.auth import (
-    get_user_model,
-)  # Используем для работы с моделью пользователя
 from django.db import models
+from django.contrib.auth import get_user_model
 
 User = get_user_model()
-# Получаем текущую модель пользователя
 
 
 class Course(models.Model):
-    title = models.CharField(
-        max_length=200,
-        verbose_name="Название курса",
-        help_text="Укажите название курса",
-    )
-    preview = models.ImageField(
-        upload_to="course_previews/",
-        blank=True,
-        null=True,
-        verbose_name="Картинка",
-        help_text="Загрузите картинку",
-    )
-    description = models.TextField(
-        verbose_name="Описание", help_text="Укажите описание курса"
-    )
-    owner = models.ForeignKey ( User,on_delete = models.CASCADE,related_name = 'courses' )
-
-    objects = models.Manager ()
-    def __str__(self):
-        return self.title
-
-
+    title = models.CharField(max_length=200)
+    preview = models.ImageField(upload_to='course_previews', null=True, blank=True)
+    description = models.TextField()
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, default = 1, related_name='courses')
+    objects = models.Manager()
 
 
 class Lesson(models.Model):
-    title = models.CharField(
-        max_length=200,
-        verbose_name="Название урока",
-        help_text="Укажите название урока",
-    )
-    description = models.TextField(
-        verbose_name="Описание", help_text="Укажите описание урока"
-    )
-    preview = models.ImageField(
-        upload_to="lesson_previews/",
-        blank=True,
-        null=True,
-        verbose_name="Картинка",
-        help_text="Загрузите картинку",
-    )
-    video_url = models.URLField()
-    course = models.ForeignKey(Course, related_name="lessons", on_delete=models.CASCADE)
-    owner = models.ForeignKey ( User,on_delete = models.CASCADE,related_name = 'lessons' )
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    preview = models.ImageField(upload_to='lesson_previews', null=True, blank=True)
+    video_link = models.URLField()
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='lessons')
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='lessons')
 
-    objects = models.Manager ()
-
-
-    def __str__(self):
-        return self.title
+    objects = models.Manager()
 
 
 class Subscription(models.Model):
-    user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-    )
-    course = models.ForeignKey(
-        Course,
-        on_delete=models.CASCADE,
-    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subscriptions')
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='subscriptions')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = (
-            "user",
-            "course",
-        )  # Уникальная подписка: один пользователь на один курс
-        verbose_name = "Подписка"
-        verbose_name_plural = "Подписки"
+        unique_together = ['user', 'course']
 
+    def __str__(self):
+        return f"{self.user.email} subscribed to {self.course.title}"
