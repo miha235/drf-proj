@@ -3,11 +3,13 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from .models import Course, Lesson, Subscription
+from django.utils import timezone
 from .serializers import CourseSerializer, LessonSerializer
 from .permissions import IsModerator, IsOwner, ReadOnlyForAll
 from .paginators import MaterialsPaginator
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+from lms.tasks import send_update_notification
 
 
 class CourseViewSet(viewsets.ModelViewSet):
@@ -54,14 +56,19 @@ class CourseViewSet(viewsets.ModelViewSet):
         request_body=CourseSerializer,
         responses={200: CourseSerializer()}
     )
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
+    def update(self,request,*args,**kwargs):
+        instance = self.get_object()
+        four_hours_ago = timezone.now() - timezone.timedelta ( hours = 4 )
 
-    @swagger_auto_schema(
-        operation_description="Частично обновить курс",
-        request_body=CourseSerializer,
-        responses={200: CourseSerializer()}
-    )
+        response = super().update(request,*args,**kwargs)
+
+        if instance.last_updated <= four_hours_ago:
+            subscribers = instance.subscribers.all ()
+            for subscriber in subscribers:
+                send_update_notification.delay(instance.id,subscriber.email )
+
+        return response
+
     def partial_update(self, request, *args, **kwargs):
         return super().partial_update(request, *args, **kwargs)
 

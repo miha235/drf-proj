@@ -154,7 +154,7 @@ CELERY_TIMEZONE = TIME_ZONE
 
 CELERY_BEAT_SCHEDULE = {
     'deactivate-inactive-users': {
-        'task': 'users.tasks.deactivate_inactive_users',
+        'task': 'users.block_inactive_users',
         'schedule': crontab(hour=0, minute=0),  # Запускать ежедневно в полночь
     },
 }
