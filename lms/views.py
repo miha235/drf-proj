@@ -63,11 +63,18 @@ class CourseViewSet(viewsets.ModelViewSet):
         response = super().update(request,*args,**kwargs)
 
         if instance.last_updated <= four_hours_ago:
-            subscribers = instance.subscribers.all ()
-            for subscriber in subscribers:
-                send_update_notification.delay(instance.id,subscriber.email )
+            subscriptions = instance.subscriptions.all ()  # Получаем все подписки, связанные с курсом
+            for subscription in subscriptions:
+                user = subscription.user  # Извлекаем пользователя из подписки
+                if user.email:  # Проверяем наличие email
+                    send_update_notification.delay ( instance.id,user.email )  # Отправляем уведомление
 
         return response
+
+
+
+
+
 
     def partial_update(self, request, *args, **kwargs):
         return super().partial_update(request, *args, **kwargs)
