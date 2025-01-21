@@ -3,13 +3,15 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from .models import Course, Lesson, Subscription
-from django.utils import timezone
 from .serializers import CourseSerializer, LessonSerializer
 from .permissions import IsModerator, IsOwner, ReadOnlyForAll
 from .paginators import MaterialsPaginator
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from lms.tasks import send_update_notification
+from django.utils import timezone
+from .models import Course
+from .serializers import CourseSerializer
+from .tasks import send_update_notification
 
 
 class CourseViewSet(viewsets.ModelViewSet):
@@ -56,26 +58,24 @@ class CourseViewSet(viewsets.ModelViewSet):
         request_body=CourseSerializer,
         responses={200: CourseSerializer()}
     )
-    def update(self,request,*args,**kwargs):
+    def update(self, request, *args, **kwargs):
         instance = self.get_object()
-        four_hours_ago = timezone.now() - timezone.timedelta ( hours = 4 )
+        four_hours_ago = timezone.now() - timezone.timedelta(hours=4)
 
-        response = super().update(request,*args,**kwargs)
+        response = super().update(request, *args, **kwargs)
 
         if instance.last_updated <= four_hours_ago:
             subscriptions = instance.subscriptions.all ()  # Получаем все подписки, связанные с курсом
             for subscription in subscriptions:
                 user = subscription.user  # Извлекаем пользователя из подписки
-                if user.email:  # Проверяем наличие email
-                    send_update_notification.delay ( instance.id,user.email )  # Отправляем уведомление
-
+                send_update_notification.delay ( instance.id,user.email )
         return response
 
-
-
-
-
-
+    @swagger_auto_schema(
+        operation_description="Частично обновить курс",
+        request_body=CourseSerializer,
+        responses={200: CourseSerializer()}
+    )
     def partial_update(self, request, *args, **kwargs):
         return super().partial_update(request, *args, **kwargs)
 

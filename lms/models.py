@@ -36,6 +36,8 @@ class Lesson(models.Model):
 
     objects = models.Manager()
 
+    def __str__(self):
+        return f"{self.title} ({self.course.title})"
 
 class Subscription(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subscriptions')
